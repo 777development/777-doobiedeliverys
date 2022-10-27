@@ -1,6 +1,6 @@
 local QBCore = exports['qb-core']:GetCoreObject()
 
-RegisterServerEvent('w1ll-doobiedelivery:server:Payed', function(deliverysDone)
+RegisterServerEvent('777-doobiedelivery:server:Payed', function(deliverysDone)
 	local src = source
     local payed = Config.Payed * deliverysDone
 	local Player = QBCore.Functions.GetPlayer(source)
