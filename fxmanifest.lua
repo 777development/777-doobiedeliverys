@@ -1,7 +1,7 @@
 fx_version 'cerulean'
 game 'gta5'
 
-author 'w1ll#4444'
+author '777development'
 description 'Doobie Delivery QBCore'
 
 shared_scripts {
