@@ -1,0 +1,246 @@
+local QBCore = exports['qb-core']:GetCoreObject()
+local Hired = false
+local HasDoobieDelivery = false
+local DeliveriesCount = 0
+local Delivered = false
+local DoobieDeliveryDelivered = false
+local ownsVan = false
+local activeOrder = false
+
+function ClockInPed()
+
+    if not DoesEntityExist(doobiedeliveryBoss) then
+
+        RequestModel(Config.PedModel) while not HasModelLoaded(Config.PedModel) do Wait(0) end
+
+        doobiedeliveryBoss = CreatePed(0, Config.PedModel, Config.PedCoords, false, false)
+        
+        SetEntityAsMissionEntity(doobiedeliveryBoss)
+        SetPedFleeAttributes(doobiedeliveryBoss, 0, 0)
+        SetBlockingOfNonTemporaryEvents(doobiedeliveryBoss, true)
+        SetEntityInvincible(doobiedeliveryBoss, true)
+        FreezeEntityPosition(doobiedeliveryBoss, true)
+        loadAnimDict("amb@world_human_leaning@female@wall@back@holding_elbow@idle_a")        
+        TaskPlayAnim(doobiedeliveryBoss, "amb@world_human_leaning@female@wall@back@holding_elbow@idle_a", "idle_a", 8.0, 1.0, -1, 01, 0, 0, 0, 0)
+
+        exports['qb-target']:AddTargetEntity(doobiedeliveryBoss, { 
+            options = {
+                { 
+                    type = "client",
+                    event = "w1ll-doobiedelivery:client:startJob",
+                    icon = "fa-solid fa-doobiedelivery-slice",
+                    label = "Start Work",
+                    canInteract = function()
+                        return not Hired
+                    end,
+                },
+                { 
+                    type = "client",
+                    event = "w1ll-doobiedelivery:client:finishWork",
+                    icon = "fa-solid fa-doobiedelivery-slice",
+                    label = "Collect Paycheck",
+                    canInteract = function()
+                        return Hired
+                    end,
+                },
+            }, 
+            distance = 1.5, 
+        })
+    end
+end
+
+AddEventHandler('onResourceStart', function(resource)
+    if GetCurrentResourceName() == resource then
+        PlayerJob = QBCore.Functions.GetPlayerData().job
+        ClockInPed()
+    end
+end)
+
+RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
+    ClockInPed()
+end)
+
+RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
+    exports['qb-target']:RemoveZone("deliverZone")
+    RemoveBlip(JobBlip)
+    Hired = false
+    HasDoobieDelivery = false
+    DeliveriesCount = 0
+    Delivered = false
+    DoobieDeliveryDelivered = false
+    ownsVan = false
+    activeOrder = false  
+    DeletePed(doobiedeliveryBoss)
+end)
+
+AddEventHandler('onResourceStop', function(resourceName) 
+	if GetCurrentResourceName() == resourceName then
+        exports['qb-target']:RemoveZone("deliverZone")
+        RemoveBlip(JobBlip)
+        Hired = false
+        HasDoobieDelivery = false
+        DeliveriesCount = 0
+        Delivered = false
+        DoobieDeliveryDelivered = false
+        ownsVan = false
+        activeOrder = false
+        DeletePed(doobiedeliveryBoss)  
+	end 
+end)
+
+CreateThread(function()
+    DecorRegister("doobiedelivery_job", 1)
+end)
+
+function PullOutVehicle()
+    if ownsVan then
+        QBCore.Functions.Notify("You already have a work vehicle! Go and collect it or end your job.", "error")
+    else
+        local coords = Config.VehicleSpawn
+        QBCore.Functions.SpawnVehicle(Config.Vehicle, function(doobiedeliveryCar)
+            SetVehicleNumberPlateText(doobiedeliveryCar, "UBER"..tostring(math.random(1000, 9999)))
+            SetVehicleColours(doobiedeliveryCar, 111, 111)
+            SetVehicleDirtLevel(doobiedeliveryCar, 1)
+            DecorSetFloat(doobiedeliveryCar, "doobiedelivery_job", 1)
+            TaskWarpPedIntoVehicle(PlayerPedId(), doobiedeliveryCar, -1)
+            TriggerEvent("vehiclekeys:client:SetOwner", GetVehicleNumberPlateText(doobiedeliveryCar))
+            SetVehicleEngineOn(doobiedeliveryCar, true, true)
+            exports[Config.FuelSystem]:SetFuel(doobiedeliveryCar, 100.0)
+            exports['qb-target']:AddTargetEntity(doobiedeliveryCar, {
+                options = {
+                    {
+                        icon = "fa-solid fa-doobiedelivery-slice",
+                        label = "Take Doobies",
+                        action = function(entity) TakeDoobieDelivery() end,
+                        canInteract = function() 
+                            return Hired and activeOrder and not HasDoobieDelivery
+                        end,
+                        
+                    },
+                },
+                distance = 2.5
+            })
+        end, coords, true)
+        Hired = true
+        ownsVan = true
+        DoobieNextDelivery()
+    end
+end
+
+
+RegisterNetEvent('w1ll-doobiedelivery:client:startJob', function()
+    if not Hired then
+        PullOutVehicle()
+    end
+end)
+
+
+RegisterNetEvent('w1ll-doobiedelivery:client:deliverDoobieDelivery', function()
+    if Config.Wanted then
+        exports['ps-dispatch']:SuspiciousActivity()
+    end
+    if HasDoobieDelivery and Hired and not DoobieDeliveryDelivered then
+        TriggerEvent('animations:client:EmoteCommandStart', {"knock"})
+        DoobieDeliveryDelivered = true
+        QBCore.Functions.Progressbar("knock", "Delivering Doobie Orders!", 7000, false, false, {
+            disableMovement = true,
+            disableCarMovement = true,
+            disableMouse = false,
+            disableCombat = true,
+        }, {}, {}, {}, function()
+            DeliveriesCount = DeliveriesCount + 1
+            RemoveBlip(JobBlip)
+            exports['qb-target']:RemoveZone("deliverZone")
+            HasDoobieDelivery = false
+            activeOrder = false
+            DoobieDeliveryDelivered = false
+            DetachEntity(prop, 1, 1)
+            DeleteObject(prop)
+            Wait(1000)
+            ClearPedSecondaryTask(PlayerPedId())
+            QBCore.Functions.Notify("Doobies Delivered. Wait for your next delivery, or collect your paycheck!", "success") 
+            SetTimeout(5000, function()    
+                DoobieNextDelivery()
+            end)
+        end)
+    else
+        QBCore.Functions.Notify("You need the Doobies from the car dummy.", "error") 
+    end
+end)
+
+
+function loadAnimDict(dict)
+	while not HasAnimDictLoaded(dict) do
+		RequestAnimDict(dict)
+		Wait(0)
+	end
+end
+
+function TakeDoobieDelivery()
+    local player = PlayerPedId()
+    local pos = GetEntityCoords(player)
+    if not IsPedInAnyVehicle(player, false) then
+        if DoesEntityExist(player) and not IsEntityDead(player) then
+            if not HasDoobieDelivery then
+                if #(pos - vector3(doobieDelivery.x, doobieDelivery.y, doobieDelivery.z)) < 30.0 then
+                    TriggerEvent('animations:client:EmoteCommandStart', {"backpack"})
+                    HasDoobieDelivery = true
+                else
+                    QBCore.Functions.Notify("You're not close enough to the customer's house!", "error")
+                end
+            end
+        end
+    end
+end
+
+
+function DoobieNextDelivery()
+    if not activeOrder then
+        doobieDelivery = Config.DoobieDeliverys[math.random(1, #Config.DoobieDeliverys)]
+
+        JobBlip = AddBlipForCoord(doobieDelivery.x, doobieDelivery.y, doobieDelivery.z)
+        SetBlipSprite(JobBlip, 1)
+        SetBlipDisplay(JobBlip, 4)
+        SetBlipScale(JobBlip, 0.8)
+        SetBlipFlashes(JobBlip, true)
+        SetBlipAsShortRange(JobBlip, true)
+        SetBlipColour(JobBlip, 83)
+        SetBlipRoute(JobBlip, true)
+        SetBlipRouteColour(JobBlip, 83)
+        BeginTextCommandSetBlipName("STRING")
+        AddTextComponentSubstringPlayerName("Drop Off Location")
+        EndTextCommandSetBlipName(JobBlip)
+        exports['qb-target']:AddCircleZone("deliverZone", vector3(doobieDelivery.x, doobieDelivery.y, doobieDelivery.z), 1.3,{ name = "deliverZone", debugPoly = false, useZ=true, }, { options = { { type = "client", event = "w1ll-doobiedelivery:client:deliverDoobieDelivery", icon = "fa-solid fa-doobiedelivery-slice", label = "Deliver DoobieDelivery"}, }, distance = 1.5 })
+        activeOrder = true
+        QBCore.Functions.Notify("You have a new doobie delivery!", "success")
+    end
+end
+
+RegisterNetEvent('w1ll-doobiedelivery:client:finishWork', function()
+    local ped = PlayerPedId()
+    local pos = GetEntityCoords(ped)
+    local veh = QBCore.Functions.GetClosestVehicle()
+    local finishspot = vector3(Config.PedCoords.x, Config.PedCoords.y, Config.PedCoords.z)
+    if #(pos - finishspot) < 10.0 then
+        if Hired then
+            if DecorExistOn((veh), "doobiedelivery_job") then
+                QBCore.Functions.DeleteVehicle(veh)
+                RemoveBlip(JobBlip)
+                Hired = false
+                HasDoobieDelivery = false
+                ownsVan = false
+                activeOrder = false
+                if DeliveriesCount > 0 then
+                    TriggerServerEvent('w1ll-doobiedelivery:server:Payed', DeliveriesCount)
+                else
+                    QBCore.Functions.Notify("You didn't complete any deliveries so you weren't paid.", "error")
+                end
+                DeliveriesCount = 0
+            else
+                QBCore.Functions.Notify("You must return your work vehicle to get paid.", "error")
+                return
+            end
+        end
+    end
+end)
+
