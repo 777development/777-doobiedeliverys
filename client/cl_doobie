@@ -9,25 +9,11 @@ local activeOrder = false
 
 function ClockInPed()
 
-    if not DoesEntityExist(doobiedeliveryBoss) then
-
-        RequestModel(Config.PedModel) while not HasModelLoaded(Config.PedModel) do Wait(0) end
-
-        doobiedeliveryBoss = CreatePed(0, Config.PedModel, Config.PedCoords, false, false)
-        
-        SetEntityAsMissionEntity(doobiedeliveryBoss)
-        SetPedFleeAttributes(doobiedeliveryBoss, 0, 0)
-        SetBlockingOfNonTemporaryEvents(doobiedeliveryBoss, true)
-        SetEntityInvincible(doobiedeliveryBoss, true)
-        FreezeEntityPosition(doobiedeliveryBoss, true)
-        loadAnimDict("amb@world_human_leaning@female@wall@back@holding_elbow@idle_a")        
-        TaskPlayAnim(doobiedeliveryBoss, "amb@world_human_leaning@female@wall@back@holding_elbow@idle_a", "idle_a", 8.0, 1.0, -1, 01, 0, 0, 0, 0)
-
         exports['qb-target']:AddTargetEntity(doobiedeliveryBoss, { 
             options = {
                 { 
                     type = "client",
-                    event = "w1ll-doobiedelivery:client:startJob",
+                    event = "777-doobiedelivery:client:startJob",
                     icon = "fa-solid fa-doobiedelivery-slice",
                     label = "Start Work",
                     canInteract = function()
@@ -36,7 +22,7 @@ function ClockInPed()
                 },
                 { 
                     type = "client",
-                    event = "w1ll-doobiedelivery:client:finishWork",
+                    event = "777-doobiedelivery:client:finishWork",
                     icon = "fa-solid fa-doobiedelivery-slice",
                     label = "Collect Paycheck",
                     canInteract = function()
@@ -46,7 +32,6 @@ function ClockInPed()
             }, 
             distance = 1.5, 
         })
-    end
 end
 
 AddEventHandler('onResourceStart', function(resource)
@@ -128,14 +113,14 @@ function PullOutVehicle()
 end
 
 
-RegisterNetEvent('w1ll-doobiedelivery:client:startJob', function()
+RegisterNetEvent('777-doobiedelivery:client:startJob', function()
     if not Hired then
         PullOutVehicle()
     end
 end)
 
 
-RegisterNetEvent('w1ll-doobiedelivery:client:deliverDoobieDelivery', function()
+RegisterNetEvent('777-doobiedelivery:client:deliverDoobieDelivery', function()
     if Config.Wanted then
         exports['ps-dispatch']:SuspiciousActivity()
     end
@@ -210,13 +195,13 @@ function DoobieNextDelivery()
         BeginTextCommandSetBlipName("STRING")
         AddTextComponentSubstringPlayerName("Drop Off Location")
         EndTextCommandSetBlipName(JobBlip)
-        exports['qb-target']:AddCircleZone("deliverZone", vector3(doobieDelivery.x, doobieDelivery.y, doobieDelivery.z), 1.3,{ name = "deliverZone", debugPoly = false, useZ=true, }, { options = { { type = "client", event = "w1ll-doobiedelivery:client:deliverDoobieDelivery", icon = "fa-solid fa-doobiedelivery-slice", label = "Deliver DoobieDelivery"}, }, distance = 1.5 })
+        exports['qb-target']:AddCircleZone("deliverZone", vector3(doobieDelivery.x, doobieDelivery.y, doobieDelivery.z), 1.3,{ name = "deliverZone", debugPoly = false, useZ=true, }, { options = { { type = "client", event = "777-doobiedelivery:client:deliverDoobieDelivery", icon = "fa-solid fa-doobiedelivery-slice", label = "Deliver DoobieDelivery"}, }, distance = 1.5 })
         activeOrder = true
         QBCore.Functions.Notify("You have a new doobie delivery!", "success")
     end
 end
 
-RegisterNetEvent('w1ll-doobiedelivery:client:finishWork', function()
+RegisterNetEvent('777-doobiedelivery:client:finishWork', function()
     local ped = PlayerPedId()
     local pos = GetEntityCoords(ped)
     local veh = QBCore.Functions.GetClosestVehicle()
@@ -231,7 +216,7 @@ RegisterNetEvent('w1ll-doobiedelivery:client:finishWork', function()
                 ownsVan = false
                 activeOrder = false
                 if DeliveriesCount > 0 then
-                    TriggerServerEvent('w1ll-doobiedelivery:server:Payed', DeliveriesCount)
+                    TriggerServerEvent('777-doobiedelivery:server:Payed', DeliveriesCount)
                 else
                     QBCore.Functions.Notify("You didn't complete any deliveries so you weren't paid.", "error")
                 end
