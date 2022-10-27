@@ -1,0 +1,15 @@
+local QBCore = exports['qb-core']:GetCoreObject()
+
+RegisterServerEvent('w1ll-doobiedelivery:server:Payed', function(deliverysDone)
+	local src = source
+    local payed = Config.Payed * deliverysDone
+	local Player = QBCore.Functions.GetPlayer(source)
+    deliverysDone = tonumber(deliverysDone)
+    if deliverysDone > 0 then
+        Player.Functions.AddMoney("cash", payed)
+        TriggerClientEvent("QBCore:Notify", source, "You received $"..payed, "success")
+    end
+end)
+
+
+
