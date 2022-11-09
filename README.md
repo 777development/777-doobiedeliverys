@@ -10,3 +10,6 @@ ensure fireae86
 
 ## SUPPORT
 if you require support, join this discord https://discord.gg/ntW3XfVw52
+
+## VEHICLE MODEL CREDIT
+https://www.gta5-mods.com/vehicles/toyota-ae86-fivem-ready
